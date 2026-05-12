@@ -1,0 +1,46 @@
+name: TODO App CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+    
+    - name: Run app in background
+      run: |
+        python app.py &
+        sleep 10
+    
+    - name: Test health endpoint
+      run: curl -f http://localhost:5000/health
+    
+    - name: Test create todo API
+      run: |
+        curl -X POST http://localhost:5000/todos \
+          -H "Content-Type: application/json" \
+          -d '{"task":"Test Todo"}' \
+          | grep "Test Todo"
